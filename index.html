@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Смотри рекламу</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://yandex.ru/ads/system/adsgram-sdk.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #18191a;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+            margin: 0;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        h2 {
+            margin-top: 40px;
+        }
+        #watchBtn {
+            background: linear-gradient(45deg, #2196f3, #21cbf3);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(33, 150, 243, 0.4);
+        }
+        #watchBtn:active {
+            transform: scale(0.98);
+        }
+        #status {
+            margin-top: 20px;
+            color: #aaa;
+            min-height: 24px;
+        }
+        #balance {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h2>📺 Смотри рекламу</h2>
+    <p>За каждый просмотр +0.1 ⭐</p>
+
+    <button id="watchBtn">Смотреть рекламу</button>
+
+    <p id="status"></p>
+
+    <h3 id="balance">💰 Загрузка...</h3>
+
+    <script>
+        (function () {
+            const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+
+            if (!tg) {
+                document.getElementById("status").innerText = "❌ Откройте эту страницу через Telegram";
+                document.getElementById("balance").innerText = "💰 Откройте бота через Telegram";
+                return;
+            }
+
+            tg.ready();
+            tg.expand();
+
+            const userId = tg.initDataUnsafe?.user?.id;
+            const statusEl = document.getElementById("status");
+            const balanceEl = document.getElementById("balance");
+            const buttonEl = document.getElementById("watchBtn");
+
+            let adController = null;
+            if (window.Adsgram && typeof window.Adsgram.init === "function") {
+                try {
+                    adController = window.Adsgram.init({ blockId: "bot-50034" });
+                } catch (e) {
+                    console.error("Adsgram init error:", e);
+                }
+            }
+
+            async function loadBalance() {
+                if (!userId) {
+                    balanceEl.innerText = "💰 Откройте бота через Telegram";
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`https://Koloo.pythonanywhere.com/balance/${userId}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    const stars = Number(data?.stars) || 0;
+                    balanceEl.innerText = `💰 Баланс: ${stars.toFixed(1)} ⭐`;
+                } catch (e) {
+                    console.error("Balance load error:", e);
+                    balanceEl.innerText = "💰 Ошибка загрузки";
+                }
+            }
+
+            buttonEl.onclick = async () => {
+                if (!userId) {
+                    statusEl.innerText = "❌ Открой бота через Telegram";
+                    return;
+                }
+
+                if (!adController) {
+                    statusEl.innerText = "❌ Реклама временно недоступна";
+                    return;
+                }
+
+                statusEl.innerText = "⏳ Загружаю рекламу...";
+
+                try {
+                    await adController.show();
+                    statusEl.innerText = "✅ Реклама просмотрена!";
+
+                    await fetch(`https://Koloo.pythonanywhere.com/reward?user_id=${userId}&amount=0.1`);
+                    await loadBalance();
+                } catch (e) {
+                    console.error("Ad reward error:", e);
+                    statusEl.innerText = "❌ Реклама недоступна или не досмотрена";
+                }
+            };
+
+            loadBalance();
+        })();
+    </script>
+</body>
+</html>
