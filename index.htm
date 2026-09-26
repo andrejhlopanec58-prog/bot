@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Смотри рекламу</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://yandex.ru/ads/system/adsgram-sdk.js"></script>
+</head>
+<body style="font-family: -apple-system, sans-serif; background: #18191a; color: #fff; padding: 20px; text-align: center;">
+    <h2>📺 Смотри рекламу</h2>
+    <p>За каждый просмотр +0.1 ⭐</p>
+
+    <button id="watchBtn" style="
+        background: linear-gradient(45deg, #2196f3, #21cbf3);
+        color: white;
+        border: none;
+        padding: 15px 40px;
+        border-radius: 30px;
+        font-size: 18px;
+        font-weight: bold;
+        margin-top: 20px;
+    ">Смотреть рекламу</button>
+
+    <p id="status" style="margin-top: 20px; color: #aaa;"></p>
+
+    <h3 id="balance" style="margin-top: 30px;">💰 Загрузка...</h3>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        const userId = tg.initDataUnsafe?.user?.id;
+
+        const AdController = window.Adsgram.init({ blockId: "bot-50034" });
+
+        async function loadBalance() {
+            if (!userId) return;
+            try {
+                const res = await fetch(`https://Koloo.pythonanywhere.com/balance/${userId}`);
+                const data = await res.json();
+                document.getElementById("balance").innerText = `💰 Баланс: ${data.stars.toFixed(1)} ⭐`;
+            } catch (e) {
+                document.getElementById("balance").innerText = "💰 Ошибка загрузки";
+            }
+            }
+
+        document.getElementById("watchBtn").onclick = async () => {
+            if (!userId) {
+                document.getElementById("status").innerText = "❌ Открой бота через Telegram";
+                return;
+            }
+
+            document.getElementById("status").innerText = "⏳ Загружаю рекламу...";
+
+            try {
+                await AdController.show();
+                document.getElementById("status").innerText = "✅ Реклама просмотрена!";
+
+                // начислить Stars через Flask
+                await fetch(`https://Koloo.pythonanywhere.com/reward?user_id=${userId}&amount=0.1`);
+
+                await loadBalance();
+            } catch (e) {
+                document.getElementById("status").innerText = "❌ Реклама недоступна или не досмотрена";
+            }
+        };
+
+        loadBalance();
+    </script>
+    </body>
+</html>
